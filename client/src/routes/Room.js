@@ -3,6 +3,26 @@ import io from "socket.io-client";
 import Peer from "simple-peer";
 import styled from "styled-components";
 
+// Web Audio API
+const audioCtx = new AudioContext();
+const peerDestination = audioCtx.createMediaStreamDestination();
+const pannerHardLeft = newPanner(-3,0,0,1,0,0);
+const pannerSoftLeft = newPanner(-1,0,0,1,0,0);
+const pannerCenter = newPanner(0,0,0,1,0,0);
+const pannerSoftRight = newPanner(1,0,0,1,0,0);
+const pannerHardRight = newPanner(3,0,0,1,0,0);
+
+function newPanner(pX, pY, pZ, oX, oY, oZ) {
+    return new PannerNode(audioCtx, {
+        positionX: pX,
+        positionY: pY,
+        positionZ: pZ,
+        orientationX: oX,
+        orientationY: oY,
+        orientationZ: oZ
+    })
+}
+
 const Container = styled.div`
     padding: 20px;
     display: flex;
@@ -23,7 +43,7 @@ const Video = (props) => {
     useEffect(() => {
         props.peer.on("stream", stream => {
             ref.current.srcObject = stream;
-        })
+        });
     }, []);
 
     return (
@@ -48,26 +68,31 @@ const Room = (props) => {
         socketRef.current = io.connect("/");
         navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: true }).then(stream => {
             userVideo.current.srcObject = stream;
+            let videoTrack = stream.getTracks().find(track => track['kind'] === 'video');
+            //console.log(videoTrack);
+            audioCtx.createMediaStreamSource(stream).connect(pannerHardLeft).connect(peerDestination);
+            peerDestination.stream.addTrack(videoTrack);
+            console.log(peerDestination.stream);
             socketRef.current.emit("join room", roomID);
             socketRef.current.on("all users", users => {
                 const peers = [];
                 users.forEach(userID => {
-                    const peer = createPeer(userID, socketRef.current.id, stream);
+                    const peer = createPeer(userID, socketRef.current.id, peerDestination.stream);
                     peersRef.current.push({
                         peerID: userID,
                         peer,
-                    })
+                    });
                     peers.push(peer);
-                })
+                });
                 setPeers(peers);
-            })
+            });
 
             socketRef.current.on("user joined", payload => {
-                const peer = addPeer(payload.signal, payload.callerID, stream);
+                const peer = addPeer(payload.signal, payload.callerID, peerDestination.stream);
                 peersRef.current.push({
                     peerID: payload.callerID,
                     peer,
-                })
+                });
 
                 setPeers(users => [...users, peer]);
             });
