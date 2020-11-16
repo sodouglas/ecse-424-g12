@@ -15,7 +15,7 @@ const CreateRoom = (props) => {
 
     function updateRoom(target) {
         roomId = document.getElementById("room-input").value;
-        console.log(roomId);
+        //console.log(roomId);
     }
 
     return (

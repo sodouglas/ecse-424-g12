@@ -6,11 +6,8 @@ import styled from "styled-components";
 // Web Audio API
 const audioCtx = new AudioContext();
 const peerDestination = audioCtx.createMediaStreamDestination();
-const pannerHardLeft = newPanner(-3,0,0,1,0,0);
-const pannerSoftLeft = newPanner(-1,0,0,1,0,0);
-const pannerCenter = newPanner(0,0,0,1,0,0);
-const pannerSoftRight = newPanner(1,0,0,1,0,0);
-const pannerHardRight = newPanner(3,0,0,1,0,0);
+const panner = newPanner(-3,0,0,1,0,0);
+const gain = audioCtx.createGain();
 
 function newPanner(pX, pY, pZ, oX, oY, oZ) {
     return new PannerNode(audioCtx, {
@@ -70,12 +67,16 @@ const Room = (props) => {
             userVideo.current.srcObject = stream;
             let videoTrack = stream.getTracks().find(track => track['kind'] === 'video');
             //console.log(videoTrack);
-            audioCtx.createMediaStreamSource(stream).connect(pannerHardLeft).connect(peerDestination);
+            gain.gain.setValueAtTime(1, audioCtx.currentTime);
+            audioCtx.createMediaStreamSource(stream).connect(gain).connect(panner).connect(peerDestination);
+            //audioCtx.createMediaStreamSource(stream).connect(panner).connect(peerDestination);
             peerDestination.stream.addTrack(videoTrack);
-            console.log(peerDestination.stream);
+            //console.log(peerDestination.stream);
             socketRef.current.emit("join room", roomID);
             socketRef.current.on("all users", users => {
                 const peers = [];
+                console.log("Getting all users");
+                console.log(users);
                 users.forEach(userID => {
                     const peer = createPeer(userID, socketRef.current.id, peerDestination.stream);
                     peersRef.current.push({
@@ -88,16 +89,21 @@ const Room = (props) => {
             });
 
             socketRef.current.on("user joined", payload => {
+                console.log("User has joined");
                 const peer = addPeer(payload.signal, payload.callerID, peerDestination.stream);
                 peersRef.current.push({
                     peerID: payload.callerID,
                     peer,
                 });
 
-                setPeers(users => [...users, peer]);
+                //setPeers(users => [...users, peer]);
+                peers.push(peer);
+                setPeers(peers);
+                console.log(peers);
             });
 
             socketRef.current.on("receiving returned signal", payload => {
+                console.log("Receiving returned signal");
                 const item = peersRef.current.find(p => p.peerID === payload.id);
                 item.peer.signal(payload.signal);
             });
@@ -110,8 +116,10 @@ const Room = (props) => {
             trickle: false,
             stream,
         });
+        console.log("Peer created");
 
         peer.on("signal", signal => {
+            console.log("created peer sending signal");
             socketRef.current.emit("sending signal", { userToSignal, callerID, signal })
         })
 
@@ -123,20 +131,35 @@ const Room = (props) => {
             initiator: false,
             trickle: false,
             stream,
-        })
+        });
+        console.log("Peer added");
 
         peer.on("signal", signal => {
-            socketRef.current.emit("returning signal", { signal, callerID })
-        })
+            console.log("Return signal");
+            socketRef.current.emit("returning signal", { signal, callerID });
+        });
 
         peer.signal(incomingSignal);
+        console.log("Signaled added peer");
 
         return peer;
     }
 
+    function toggleMic(){
+        let b = document.getElementById("mic-button");
+        if (b.innerHTML === 'Unmuted'){
+            b.innerHTML = 'Muted';
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+        } else {
+            b.innerHTML = 'Unmuted';
+            gain.gain.setValueAtTime(1, audioCtx.currentTime);
+        }
+    }
+
     return (
         <div>
-            <h2>Room ID: {roomID}</h2>
+            <h3>Room ID: {roomID}</h3><br/>
+            <button id="mic-button" onClick={toggleMic}>Unmuted</button>
             <Container>
                 <StyledVideo muted ref={userVideo} autoPlay playsInline />
                 {peers.map((peer, index) => {
