@@ -110,14 +110,17 @@ const Room = (props) => {
     }
 
     return (
-        <Container>
-            <StyledVideo muted ref={userVideo} autoPlay playsInline />
-            {peers.map((peer, index) => {
-                return (
-                    <Video key={index} peer={peer} />
-                );
-            })}
-        </Container>
+        <div>
+            <h2>Room ID: {roomID}</h2>
+            <Container>
+                <StyledVideo muted ref={userVideo} autoPlay playsInline />
+                {peers.map((peer, index) => {
+                    return (
+                        <Video key={index} peer={peer} />
+                    );
+                })}
+            </Container>
+        </div>
     );
 };
 
