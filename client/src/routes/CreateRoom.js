@@ -25,6 +25,7 @@ const CreateRoom = (props) => {
                 id="room-input"
                 onChange={updateRoom}
                 placeholder="Room ID"
+                style={{width: "300px", margin: "0px 10px 0px 0px"}}
                 ></input>
             <button onClick={goToRoom}>Join room</button>
             <br/>

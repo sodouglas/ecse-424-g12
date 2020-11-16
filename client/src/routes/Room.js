@@ -6,7 +6,11 @@ import styled from "styled-components";
 // Web Audio API
 const audioCtx = new AudioContext();
 const peerDestination = audioCtx.createMediaStreamDestination();
-const panner = newPanner(-3,0,0,1,0,0);
+const panHardLeft = newPanner(-3,0,-1,3,0,1);
+// const panSoftLeft = newPanner(-1,0,0,1,0,0);
+// const panSoftRight = newPanner(1,0,0,1,0,0);
+const panHardRight = newPanner(3,0,1,-3,0,-1);
+const panners = [panHardRight, panHardLeft, panHardRight, panHardLeft];
 const gain = audioCtx.createGain();
 
 function newPanner(pX, pY, pZ, oX, oY, oZ) {
@@ -23,7 +27,7 @@ function newPanner(pX, pY, pZ, oX, oY, oZ) {
 const Container = styled.div`
     padding: 20px;
     display: flex;
-    height: 100vh;
+    height: 70vh;
     width: 90%;
     margin: auto;
     flex-wrap: wrap;
@@ -34,12 +38,27 @@ const StyledVideo = styled.video`
     width: 50%;
 `;
 
+const BarButton = styled.button`
+    border: 4px solid #95e;
+    border-radius: 10px;
+    background: #fff;
+    height: 100%;
+    width: 20%;
+    cursor: pointer;
+    float: left;
+`;
+
 const Video = (props) => {
     const ref = useRef();
+    const hostDestination = audioCtx.createMediaStreamDestination();
 
     useEffect(() => {
         props.peer.on("stream", stream => {
-            ref.current.srcObject = stream;
+            console.log(stream);
+            let video = stream.getVideoTracks()[0];
+            audioCtx.createMediaStreamSource(stream).connect(panners[props.position]).connect(hostDestination);
+            hostDestination.stream.addTrack(video);
+            ref.current.srcObject = hostDestination.stream;
         });
     }, []);
 
@@ -65,12 +84,11 @@ const Room = (props) => {
         socketRef.current = io.connect("/");
         navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: true }).then(stream => {
             userVideo.current.srcObject = stream;
-            let videoTrack = stream.getTracks().find(track => track['kind'] === 'video');
+            let videoTracks = stream.getVideoTracks();
             //console.log(videoTrack);
             gain.gain.setValueAtTime(1, audioCtx.currentTime);
-            audioCtx.createMediaStreamSource(stream).connect(gain).connect(panner).connect(peerDestination);
-            //audioCtx.createMediaStreamSource(stream).connect(panner).connect(peerDestination);
-            peerDestination.stream.addTrack(videoTrack);
+            audioCtx.createMediaStreamSource(stream).connect(gain).connect(peerDestination);
+            peerDestination.stream.addTrack(videoTracks[0]);
             //console.log(peerDestination.stream);
             socketRef.current.emit("join room", roomID);
             socketRef.current.on("all users", users => {
@@ -107,6 +125,8 @@ const Room = (props) => {
                 const item = peersRef.current.find(p => p.peerID === payload.id);
                 item.peer.signal(payload.signal);
             });
+        }).catch(function(err) {
+            console.log(err.message);
         })
     }, []);
 
@@ -159,15 +179,17 @@ const Room = (props) => {
     return (
         <div>
             <h3>Room ID: {roomID}</h3><br/>
-            <button id="mic-button" onClick={toggleMic}>Unmuted</button>
             <Container>
                 <StyledVideo muted ref={userVideo} autoPlay playsInline />
                 {peers.map((peer, index) => {
                     return (
-                        <Video key={index} peer={peer} />
+                        <Video key={index} position={index} peer={peer} />
                     );
                 })}
             </Container>
+            <div style={{height: "10vh"}}>
+                <BarButton id="mic-button" onClick={toggleMic}>Unmuted</BarButton>
+            </div>
         </div>
     );
 };
