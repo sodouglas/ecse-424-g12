@@ -9,7 +9,7 @@
     "socket.io": "^2.3.0"
   },
   "scripts": {
-    "start": "node server.js",
-    "postinstall": "cd ./client && yarn"
+    "start": "node server.js && cd ./client && npm start",
+    "postinstall": "cd ./client && npm install"
   }
 }
