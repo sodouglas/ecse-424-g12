@@ -9,7 +9,7 @@
     "socket.io": "^2.3.0"
   },
   "scripts": {
-    "start": "node server.js & (cd ./client && npm start)",
-    "postinstall": "cd ./client && npm install"
+    "start": "node server.js",
+    "heroku-postbuild": "cd client && npm install && npm run build"
   }
 }

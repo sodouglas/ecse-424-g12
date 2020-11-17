@@ -10,6 +10,17 @@ const users = {};
 
 const socketToRoom = {};
 
+const path = require('path')
+
+// TEST STUFF
+app.use(express.static(path.join(__dirname, 'client/build')))
+
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname + '/client/build/index.html'))
+})
+
+// END TEST STUFF
+
 io.on('connection', socket => {
     socket.on("join room", roomID => {
         if (users[roomID]) {
@@ -47,6 +58,6 @@ io.on('connection', socket => {
 
 });
 
-server.listen(process.env.PORT, () => console.log('server is running on port 8000'));
+server.listen(process.env.PORT || 8000, () => console.log('server is running on port 8000'));
 
 
