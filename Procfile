@@ -1,3 +1,3 @@
-web: npm start
-frontend: npm start --prefix client
+web: npm start --prefix client
+backend: npm start
 
