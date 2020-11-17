@@ -1,2 +1,3 @@
-web: npm start & npm start --prefix client & wait -n
+web: npm start
+frontend: npm start --prefix client
 
